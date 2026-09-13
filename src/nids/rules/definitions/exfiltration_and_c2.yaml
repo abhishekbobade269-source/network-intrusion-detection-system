@@ -1,0 +1,32 @@
+# Data-exfiltration and command-and-control (beaconing) heuristics.
+# These are intentionally conservative (higher thresholds, lower confidence)
+# since they're easy to false-positive on legit large uploads / keep-alives —
+# treat them as leads for the ML anomaly score to corroborate, not sole proof.
+
+- id: SUSPECTED_DATA_EXFILTRATION
+  name: Suspected data exfiltration
+  severity: high
+  confidence: 0.6
+  description: >
+    Large, heavily one-directional outbound transfer (forward bytes far
+    exceeding backward bytes) sustained over a long-lived flow — shape
+    consistent with bulk exfiltration rather than typical request/response
+    traffic.
+  conditions:
+    - { field: fwd_bytes, op: gte, value: 5000000 }
+    - { field: down_up_ratio, op: lte, value: 0.02 }
+    - { field: duration_s, op: gte, value: 5 }
+
+- id: SUSPECTED_C2_BEACONING
+  name: Suspected C2 beaconing
+  severity: medium
+  confidence: 0.5
+  description: >
+    Long-lived, low-volume flow with very regular inter-arrival timing
+    (low IAT variance) — shape consistent with periodic command-and-control
+    check-ins rather than interactive or bulk traffic.
+  conditions:
+    - { field: duration_s, op: gte, value: 60 }
+    - { field: total_bytes, op: lte, value: 20000 }
+    - { field: iat_std, op: lte, value: 1.5 }
+    - { field: total_packets, op: gte, value: 5 }

@@ -1,0 +1,39 @@
+# Volumetric / denial-of-service style signatures.
+
+- id: TCP_SYN_FLOOD_FLOW
+  name: TCP SYN flood indicator
+  severity: high
+  confidence: 0.85
+  description: >
+    A single flow dominated by SYNs with essentially no completed
+    handshake and a very high packet rate — indicative of a SYN flood
+    against this destination.
+  conditions:
+    - { field: protocol, op: eq, value: 6 }
+    - { field: syn_count, op: gte, value: 20 }
+    - { field: ack_count, op: lte, value: 1 }
+    - { field: packets_per_s, op: gte, value: 10 }
+
+- id: ICMP_FLOOD
+  name: ICMP flood
+  severity: high
+  confidence: 0.8
+  description: >
+    Abnormally high ICMP packet rate on one flow — consistent with a ping
+    flood / ICMP-based DoS.
+  conditions:
+    - { field: protocol, op: eq, value: 1 }
+    - { field: packets_per_s, op: gte, value: 50 }
+    - { field: total_packets, op: gte, value: 50 }
+
+- id: UDP_FLOOD
+  name: UDP flood
+  severity: high
+  confidence: 0.75
+  description: >
+    High-rate, one-directional UDP traffic with negligible response —
+    consistent with a UDP flood or reflection/amplification attack.
+  conditions:
+    - { field: protocol, op: eq, value: 17 }
+    - { field: packets_per_s, op: gte, value: 100 }
+    - { field: down_up_ratio, op: lte, value: 0.05 }

@@ -1,0 +1,73 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nids
+      POSTGRES_PASSWORD: nids
+      POSTGRES_DB: nids
+    volumes:
+      - nids_pg_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nids -d nids"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    build: .
+    init: true
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NIDS_DATABASE_URL: postgresql+asyncpg://nids:nids@postgres:5432/nids
+    entrypoint: ["alembic", "upgrade", "head"]
+    restart: "no"
+
+  api:
+    build: .
+    init: true
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NIDS_ENVIRONMENT: production
+      NIDS_DATABASE_URL: postgresql+asyncpg://nids:nids@postgres:5432/nids
+      NIDS_API_CORS_ORIGINS: '["http://localhost:5173"]'
+      NIDS_ML_MODEL_PATH: /app/models/anomaly_model.joblib
+    volumes:
+      - ./models:/app/models:ro
+    # Live capture needs these; omit both — and use `ports: ["8000:8000"]`
+    # instead of host networking — if you only want pcap replay / the API
+    # without live capture and don't want the container this privileged.
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    network_mode: "host" # simplest way to see the host's real interfaces for live capture
+
+  dashboard:
+    build:
+      context: ./dashboard
+      # Vite inlines VITE_* vars into the static bundle at build time, so
+      # this has to be a build arg, not a container `environment:` — the
+      # latter would have zero effect on the already-built JS. Override
+      # with `docker compose build --build-arg VITE_API_BASE_URL=...` (or
+      # edit this default) if the API isn't reachable at localhost:8000
+      # from wherever the dashboard is opened.
+      args:
+        VITE_API_BASE_URL: http://localhost:8000
+    init: true
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+
+volumes:
+  nids_pg_data:

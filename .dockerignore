@@ -1,0 +1,16 @@
+.venv
+__pycache__
+*.pyc
+.mypy_cache
+.ruff_cache
+.pytest_cache
+htmlcov
+.coverage*
+.git
+.env
+data
+models/*.joblib
+models/*.pkl
+dashboard/node_modules
+dashboard/dist
+tests/fixtures/*.pcap

@@ -1,0 +1,62 @@
+# Stealth TCP scan signatures (nmap -sN / -sF / -sX style).
+# These key off which TCP flags are ABSENT, not present — that's the whole
+# point of a stealth scan: no full three-way handshake ever happens.
+
+- id: TCP_NULL_SCAN
+  name: TCP NULL scan probe
+  severity: medium
+  confidence: 0.75
+  description: >
+    TCP flow with no flags set at all (no SYN/ACK/FIN/RST/PSH/URG) and very
+    few packets — classic nmap -sN NULL-scan probe.
+  conditions:
+    - { field: protocol, op: eq, value: 6 }
+    - { field: syn_count, op: eq, value: 0 }
+    - { field: ack_count, op: eq, value: 0 }
+    - { field: fin_count, op: eq, value: 0 }
+    - { field: rst_count, op: eq, value: 0 }
+    - { field: total_packets, op: lte, value: 2 }
+
+- id: TCP_FIN_SCAN
+  name: TCP FIN scan probe
+  severity: medium
+  confidence: 0.75
+  description: >
+    Bare FIN packet with no prior SYN/ACK on the flow — nmap -sF probe
+    exploiting RFC793 behavior on closed vs. open ports.
+  conditions:
+    - { field: protocol, op: eq, value: 6 }
+    - { field: fin_count, op: gte, value: 1 }
+    - { field: syn_count, op: eq, value: 0 }
+    - { field: ack_count, op: eq, value: 0 }
+    - { field: total_packets, op: lte, value: 2 }
+
+- id: TCP_XMAS_SCAN
+  name: TCP XMAS scan probe
+  severity: medium
+  confidence: 0.8
+  description: >
+    FIN + PSH + URG set together with no SYN/ACK — nmap -sX "Christmas
+    tree" probe.
+  conditions:
+    - { field: protocol, op: eq, value: 6 }
+    - { field: fin_count, op: gte, value: 1 }
+    - { field: psh_count, op: gte, value: 1 }
+    - { field: urg_count, op: gte, value: 1 }
+    - { field: syn_count, op: eq, value: 0 }
+
+- id: TCP_HALF_OPEN_PROBE
+  name: TCP half-open (SYN-only) probe
+  severity: low
+  confidence: 0.6
+  description: >
+    SYN sent with no answering SYN-ACK/ACK and the flow going nowhere —
+    consistent with a single half-open scan probe (nmap -sS). Low
+    confidence alone; escalated by the host-based port-scan detector when
+    repeated across many destinations.
+  conditions:
+    - { field: protocol, op: eq, value: 6 }
+    - { field: syn_count, op: gte, value: 1 }
+    - { field: ack_count, op: eq, value: 0 }
+    - { field: total_packets, op: lte, value: 2 }
+    - { field: duration_s, op: lte, value: 3 }

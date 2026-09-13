@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Data & models (large / generated — see data/README.md and models/README.md)
+data/raw/
+data/interim/
+data/processed/
+models/*.joblib
+models/*.pkl
+models/*.onnx
+models/*.metrics.json
+!models/.gitkeep
+*.pcap
+*.pcapng
+# ...except the small, deterministic demo fixture tests/CI/README rely on.
+!tests/fixtures/*.pcap
+
+# Dashboard
+dashboard/node_modules/
+dashboard/dist/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude/settings.local.json
