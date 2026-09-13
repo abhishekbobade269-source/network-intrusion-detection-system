@@ -95,7 +95,7 @@ def test_train_and_score_round_trip(tmp_path: Path) -> None:
 
 def _dummy_record() -> FlowRecord:
     return _flow_record_from_row(
-        {col: 0.0 for col in FEATURE_COLUMNS} | {"total_packets": 1, "total_bytes": 60}
+        dict.fromkeys(FEATURE_COLUMNS, 0.0) | {"total_packets": 1, "total_bytes": 60}
     )
 
 

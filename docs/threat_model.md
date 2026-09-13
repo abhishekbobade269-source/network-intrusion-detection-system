@@ -60,10 +60,13 @@ demonstration for)
 - **The API's write path is the other boundary.** `/system/capture/*` and
   `/alerts/{id}/acknowledge` are gated behind a static API key
   (`NIDS_API_KEY`) via `nids.api.deps.require_api_key` — unset in local
-  dev (no-op), **must** be set in any shared/production deployment. Read
-  endpoints (`GET /alerts`, `/stats`, `/ws/alerts`) are unauthenticated by
-  design (a read-only dashboard); put this behind your own auth/reverse
-  proxy if the deployment is anything but a private network.
+  dev (no-op), **must** be set in any shared/production deployment — and
+  rate-limited per IP (`nids.api.limiter`, 20/minute by default) so a
+  leaked/guessed key or a misbehaving client can't hammer capture
+  start/stop or flood the acknowledge endpoint with no backpressure. Read
+  endpoints (`GET /alerts`, `/stats`, `/ws/alerts`) are unauthenticated and
+  unlimited by design (a read-only dashboard); put this behind your own
+  auth/reverse proxy if the deployment is anything but a private network.
 - **The webhook notifier is best-effort and isolated.** A failing/slow
   webhook endpoint logs and moves on (`nids.alerts.notifier.AlertNotifier`)
   — it can never block or crash the detection loop.

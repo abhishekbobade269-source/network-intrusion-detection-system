@@ -76,6 +76,14 @@ def load_cicids2017(csv_paths: Sequence[str | Path]) -> pd.DataFrame:
         mapped = df[list(CICIDS2017_COLUMN_MAP)].rename(columns=CICIDS2017_COLUMN_MAP)
         mapped["label_detail"] = mapped["label"]
         mapped["label"] = (mapped["label"].astype(str).str.upper() != "BENIGN").astype(int)
+        # CICFlowMeter has no single "total packets/bytes" column — only
+        # the forward/backward halves — but FEATURE_COLUMNS (and
+        # FlowRecord.to_feature_dict, which this must match) has both the
+        # halves *and* the totals. Derive them here rather than silently
+        # feeding `_clean` a frame that's missing two of its required
+        # columns (it would raise a bare KeyError from dropna otherwise).
+        mapped["total_packets"] = mapped["fwd_packets"] + mapped["bwd_packets"]
+        mapped["total_bytes"] = mapped["fwd_bytes"] + mapped["bwd_bytes"]
         frames.append(mapped)
 
     combined = pd.concat(frames, ignore_index=True)

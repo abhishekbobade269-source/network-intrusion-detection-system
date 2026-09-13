@@ -89,6 +89,18 @@ minversion = "8.0"
 addopts = "-ra -q --cov=nids --cov-report=term-missing"
 testpaths = ["tests"]
 asyncio_mode = "auto"
+# One event loop for the whole test session, not one per test function.
+# nids.db.session.init_engine()/get_sessionmaker() are @lru_cache'd (by
+# design — the app is a long-running server process with one engine for
+# its lifetime), so their pooled asyncpg connections get bound to
+# whichever event loop was running the first time a test called them. A
+# per-function loop scope tears that loop down after each test, and the
+# next DB-touching test then tries to clean up / reuse a connection on an
+# already-closed loop ("Event loop is closed" / "'NoneType' object has no
+# attribute 'send'" from asyncpg). Session-scoped loops match the cached
+# engine's actual lifetime assumption instead of fighting it.
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
 
 [tool.coverage.run]
 source = ["src/nids"]

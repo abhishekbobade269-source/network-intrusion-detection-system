@@ -1,29 +1,42 @@
 from __future__ import annotations
 
 import asyncio
+import uuid
 from collections.abc import AsyncIterator
 from pathlib import Path
 
 import pytest
 import pytest_asyncio
+from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
 
+from nids.alerts.schemas import AlertCreate
+from nids.alerts.store import AlertStore
 from nids.api.main import create_app
+from nids.common import DetectorKind, Severity
+from nids.db.session import get_sessionmaker
 
 FIXTURE = Path(__file__).parents[1] / "fixtures" / "demo_traffic.pcap"
 
 
 @pytest_asyncio.fixture
-async def client() -> AsyncIterator[AsyncClient]:
-    """An httpx client wired to the app over ASGI, with the app's lifespan
-    (which sets up `app.state.nids`) actually driven — plain
-    `ASGITransport` does not run lifespan on its own.
+async def app() -> AsyncIterator[FastAPI]:
+    """The FastAPI app with its lifespan (which sets up `app.state.nids`)
+    actually driven — plain `ASGITransport` does not run lifespan on its
+    own. Separate from `client` below so tests that need to reach into
+    `app.state.nids` directly (the capture-guard-clause tests) don't have
+    to poke at httpx's private transport attribute to get back to it.
     """
-    app = create_app()
-    async with app.router.lifespan_context(app):
-        transport = ASGITransport(app=app)
-        async with AsyncClient(transport=transport, base_url="http://test") as ac:
-            yield ac
+    the_app = create_app()
+    async with the_app.router.lifespan_context(the_app):
+        yield the_app
+
+
+@pytest_asyncio.fixture
+async def client(app: FastAPI) -> AsyncIterator[AsyncClient]:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        yield ac
 
 
 @pytest.mark.asyncio
@@ -90,3 +103,84 @@ async def test_capture_start_replays_pcap_and_alerts_are_queryable(
             stats_response = await client.get("/stats/engine")
             assert stats_response.status_code == 200
             assert stats_response.json()["is_capturing"] is False  # replay finished on its own
+
+
+@pytest.mark.asyncio
+async def test_get_alert_returns_404_for_unknown_id(
+    client: AsyncClient, require_database: None
+) -> None:
+    response = await client.get(f"/alerts/{uuid.uuid4()}")
+    assert response.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_acknowledge_alert_round_trip(client: AsyncClient, require_database: None) -> None:
+    sessionmaker = get_sessionmaker()
+    async with sessionmaker() as session:
+        store = AlertStore(session)
+        created = await store.create(
+            AlertCreate(
+                detector=DetectorKind.SIGNATURE,
+                rule_id="API_ACK_TEST",
+                name="ack test",
+                severity=Severity.LOW,
+                confidence=0.5,
+                description="ack test",
+                src_ip="192.0.2.55",
+                dst_ip="192.0.2.56",
+            )
+        )
+
+    response = await client.get(f"/alerts/{created.id}")
+    assert response.status_code == 200
+    assert response.json()["acknowledged"] is False
+
+    ack_response = await client.post(f"/alerts/{created.id}/acknowledge")
+    assert ack_response.status_code == 200
+    assert ack_response.json()["acknowledged"] is True
+
+    missing_response = await client.post(f"/alerts/{uuid.uuid4()}/acknowledge")
+    assert missing_response.status_code == 404
+
+
+class _StubRunningRunner:
+    """Minimal stand-in for `DetectionRunner` for the capture-guard-clause
+    tests below. `is_running` is read by `AppState.is_capturing`; `stop()`
+    is a no-op so the app's own lifespan shutdown (which unconditionally
+    calls `state.runner.stop()` if a runner is set) has something to call.
+    """
+
+    is_running = True
+
+    def stop(self) -> None:
+        pass
+
+
+@pytest.mark.asyncio
+async def test_start_capture_conflicts_when_already_capturing(
+    app: FastAPI, client: AsyncClient
+) -> None:
+    app.state.nids.runner = _StubRunningRunner()
+
+    response = await client.post(
+        "/system/capture/start", json={"mode": "pcap", "pcap_path": "irrelevant.pcap"}
+    )
+
+    assert response.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_stop_capture_conflicts_when_not_capturing(client: AsyncClient) -> None:
+    response = await client.post("/system/capture/stop")
+    assert response.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_start_live_capture_rejected_when_unavailable(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("nids.api.routes.system.can_capture_live", lambda: False)
+
+    response = await client.post("/system/capture/start", json={"mode": "live", "iface": "eth0"})
+
+    assert response.status_code == 400

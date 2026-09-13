@@ -1,8 +1,9 @@
-# Progress — where this stands
+# Progress
 
-Session paused here at the user's request. This file is the handoff: what's
-done, what's verified, and what's still open, so picking this back up
-doesn't require re-deriving context from the code alone.
+Updated after a second work session that closed out the items the first
+one had left open. Kept as a running log rather than deleted, since
+"what's actually verified vs. assumed" is exactly the kind of thing that
+goes stale silently otherwise.
 
 ## Done
 
@@ -10,89 +11,101 @@ doesn't require re-deriving context from the code alone.
   `AsyncSniffer`) and offline pcap replay (`nids.capture.pcap_reader`), both
   normalized into one `Packet` model (`nids.capture.packet`).
 - **Flows** — bidirectional flow aggregation with Welford's online stats
-  (`nids.flows`), producing the 26-feature vector both detectors share
-  (`nids.ml.features.FEATURE_COLUMNS`).
-- **Signature detection** — YAML rule engine (`nids.rules.engine`/`loader`)
-  with rules for TCP NULL/FIN/XMAS/half-open scans, SYN/ICMP/UDP floods,
-  suspected exfiltration, and suspected C2 beaconing
-  (`src/nids/rules/definitions/*.yaml`), plus a stateful cross-flow
-  port/host-scan detector (`nids.rules.scan_detector.PortScanDetector`).
+  (`nids.flows`), producing the 26-feature vector both detectors share.
+- **Signature detection** — YAML rule engine with rules for TCP
+  NULL/FIN/XMAS/half-open scans, SYN/ICMP/UDP floods, suspected
+  exfiltration, and suspected C2 beaconing, plus a stateful cross-flow
+  port/host-scan detector.
 - **ML anomaly detection** — Isolation Forest trained on benign-only
-  traffic (`nids.ml.train`), scored live per-flow (`nids.ml.predict`).
-  Synthetic dataset generator (`nids.ml.datasets.make_synthetic_dataset`)
-  for a dependency-free pipeline; CICIDS2017 CSV loader
-  (`load_cicids2017`) for real accuracy, not yet exercised against the
-  real dataset (see Pending).
-- **Alerting** — async detection runner (`nids.detection.runner`) driving
-  the sync detection core (`nids.detection.pipeline`), PostgreSQL-backed
-  alert store (SQLAlchemy 2.0 + Alembic, `nids.alerts`, `nids.db`), a
-  webhook notifier, and a FastAPI REST + websocket API
-  (`nids.api`) with capture start/stop control.
-- **Dashboard** — Vite + React + TS live alert feed with capture controls
-  (`dashboard/`), builds and lints clean.
-- **Ops/tooling** — Dockerfiles (API + dashboard) and `docker-compose.yml`,
-  GitHub Actions CI at the repo root (`.github/workflows/nids-ci.yml`,
-  path-scoped to this folder — not yet pushed/run on GitHub, see
-  Pending), pyproject with ruff/mypy/bandit/pytest config, pre-commit,
-  Makefile.
-- **Docs** — `README.md`, `docs/architecture.md`, `docs/threat_model.md`
-  (explicit non-goals), `docs/model_card.md` (training-data caveats).
+  traffic; synthetic dataset generator for a dependency-free pipeline;
+  CICIDS2017 CSV loader for real accuracy (see "still open" below).
+- **Alerting** — async detection runner, PostgreSQL-backed alert store
+  (SQLAlchemy 2.0 + Alembic), a webhook notifier, and a FastAPI REST +
+  websocket API with capture start/stop control.
+- **API hardening** — per-IP rate limiting (`nids.api.limiter`, slowapi) on
+  every write/control endpoint (`/system/capture/*`,
+  `/alerts/{id}/acknowledge`), on top of the existing API-key gate.
+- **Dashboard** — Vite + React + TS live alert feed with capture controls.
+- **Ops/tooling** — Dockerfiles, docker-compose, GitHub Actions CI,
+  pyproject with ruff/mypy/bandit/pytest, pre-commit, Makefile.
+- **Docs** — README, architecture (now including a section on the actual
+  bugs this project's own tests caught), threat model, model card.
+- **Its own independent git repo.** This folder was originally committed
+  into the shared Abhi_Portfolio monorepo (it never got its own `.git`, so
+  `git add`/`git commit` walked up to the parent's); a sibling session
+  building another portfolio project caught this, the user confirmed each
+  project gets its own repo, and this folder now has a fresh, independent
+  history (`git init -b master`, one root commit) instead.
 
-## Verified (not just written)
+## Verified this session (previously only "written, not run")
 
-- 20 tests pass, 1 (DB-backed) auto-skips without a running Postgres —
-  `pytest` from the project folder.
+- **A real PostgreSQL instance, not just auto-skip.** No Postgres was
+  running last time; this session initialized a throwaway local cluster
+  (`initdb`/`pg_ctl`, trust auth, its own port, torn down after) and ran
+  the full suite against it for real — migrations included.
+- **The full HTTP control-plane path.** `POST /system/capture/start` (pcap
+  mode) → real pcap replay → real persisted Postgres rows → `GET /alerts`
+  returning them — the one path that exercises the API's actual
+  `on_detection` wiring, not a hand-rolled equivalent
+  (`tests/integration/test_alert_persistence.py`,
+  `test_api.py::test_capture_start_replays_pcap_and_alerts_are_queryable`).
+- **A real ASGI websocket handshake against `/ws/alerts`** — and it caught
+  a genuine bug in the process (below).
+- **The CICIDS2017 loader against real-shaped data** — and it also caught
+  a genuine bug (below).
+
+## Bugs found and fixed by actually running things
+
+Real ones, not the kind you get from re-reading your own code:
+
+1. **First packet of every capture session silently dropped.** Scapy's
+   Ether→IP layer binding was registered lazily (inside the per-packet
+   parser), one packet too late for the very first packet of any session.
+   Fixed with `nids.capture._scapy_parse.warm_up_scapy_layers()`, called
+   before any reading starts.
+2. **`/ws/alerts` crashed on every connection attempt.** Its dependency
+   was typed for an HTTP `Request`, which doesn't exist in a websocket
+   scope. Fixed with a dedicated `get_app_state_ws` dependency.
+3. **`load_cicids2017` raised `KeyError` on any real CICIDS2017 input.**
+   It never computed `total_packets`/`total_bytes` (CICFlowMeter only has
+   the forward/backward halves), so the cleanup step crashed looking for
+   columns that were never created. Fixed by deriving both totals right
+   after the column rename.
+4. **The test suite itself was flaky by construction.** The app's
+   `@lru_cache`'d async DB engine (correct for a long-running server) got
+   bound to whichever event loop happened to run first under
+   pytest-asyncio's default per-test-function loop, so later DB tests
+   intermittently failed cleaning up connections against an already-closed
+   loop. Fixed in `pyproject.toml` (session-scoped test/fixture event
+   loops), not application code.
+
+All four are written up in more detail in `docs/architecture.md`'s "Bugs
+this project's own tests caught" section.
+
+## Current numbers
+
+- 60 tests pass (0 skipped, run against a real Postgres instance).
+- 91% overall coverage (`pytest`'s own report — see the low points below).
 - `ruff check .`, `ruff format --check .`, `mypy src`, and
   `bandit -c pyproject.toml -r src` are all clean.
-- Ran the real pipeline end-to-end: `nids train --dataset synthetic`, then
-  `nids replay tests/fixtures/demo_traffic.pcap` — confirmed the NULL-scan
-  signature, the cross-flow port-scan detector, the ICMP-flood signature,
-  and the ML anomaly scorer all fire correctly, while the one legitimate
-  handshake flow in that fixture stays clean on the signature side.
-- Found and fixed a real bug in that process: the first packet of any
-  capture session was silently mis-parsed as `Raw` because
-  `scapy.layers.inet`'s `bind_layers` registration was happening lazily,
-  one packet too late (`nids.capture._scapy_parse.warm_up_scapy_layers`,
-  documented in `docs/architecture.md`).
-- Two commits on `master`: the main build, and a small Makefile/
-  `.dockerignore` hardening follow-up.
 
-## Pending / not done
+## Still open (honestly, not just "future work" filler)
 
-- **Never trained on real data.** The shipped/tested model only ever saw
-  the synthetic dataset — its metrics are a pipeline-correctness check,
-  not an accuracy claim (spelled out in `docs/model_card.md`). Training
-  against CICIDS2017 needs the CSVs downloaded manually (license/size
-  reasons) and `nids train --dataset cicids2017 --cicids-csv ...` run
-  against them.
-- **CI has never actually run.** `.github/workflows/nids-ci.yml` exists at
-  the repo root and is written to trigger on pushes/PRs touching this
-  folder, but nothing has been pushed to GitHub yet in this session — it
-  hasn't executed even once. First push will be the first real signal on
-  whether it's green.
-- **No auth/rate-limiting hardening beyond the basic API-key gate.**
-  `NIDS_API_KEY` gates write/control endpoints; read endpoints
-  (`/alerts`, `/stats`, `/ws/alerts`) are open by design for a private
-  network (see `docs/threat_model.md`). Don't expose this publicly as-is.
-- **Live capture is untested end-to-end.** Pcap replay was verified for
-  real; live NIC sniffing (`nids sniff`, `POST /system/capture/start`
-  `{"mode":"live"}`) exercises the same normalization/detection code path
-  but wasn't run against a live interface in this session (this dev
-  machine has no Npcap/root capture rights available).
-- **Test coverage is ~69% overall**, concentrated in the pure-logic layers
-  (flows/rules/packet at 100%); the API routes, the async runner, and the
-  websocket manager are comparatively thin on direct test coverage (they
-  are exercised indirectly by the DB-gated integration tests, but see the
-  next point).
-- **The DB-backed integration test never actually ran** in this session —
-  no local Postgres was available, so it auto-skipped every time; it's
-  unverified beyond "the code compiles and the query shapes look right."
-- **Dashboard has no test suite** — it type-checks, builds, and lints
-  clean, but there's no unit/e2e test coverage for the React components or
-  the websocket-reconnect hook.
-- No LICENSE file was added (deliberately skipped — `pyproject.toml`
-  declares `license = "MIT"` as package metadata, but a repo-level license
-  decision belongs to you, not something to add unilaterally).
+- **Never trained on real CICIDS2017 data.** The loader is now
+  test-verified against real-shaped CSVs, but no actual multi-GB dataset
+  was downloaded in this environment (size/license reasons — see
+  `docs/model_card.md`) — the shipped model is still the synthetic one.
+- **Live NIC capture is still untested end to end.** This dev environment
+  has no Npcap/root capture rights. Pcap replay and the live-capture *code
+  path minus the actual sniff* (warm-up, normalization, the "unavailable"
+  guard clause) are covered; a real NIC was never attached.
+- **`nids.capture.sniffer` is at 29% coverage** for the same reason — the
+  parts that need a real interface can't be exercised here.
+- **CI has still never actually run on GitHub** — it's now correctly
+  positioned in this repo's own `.github/workflows/`, but nothing has been
+  pushed to a GitHub remote from this environment.
+- No LICENSE file — still a deliberate call for you to make, not
+  something to add unilaterally.
 
 ## To pick this back up
 

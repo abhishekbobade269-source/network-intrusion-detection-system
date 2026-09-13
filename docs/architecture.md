@@ -110,6 +110,46 @@ polls against the *replayed* packet timestamps instead (see
 `DetectionRunner.run_pcap`'s `_pcap_clock`), so idle/active timeouts behave
 identically whether a capture replays in 2 seconds or 20 minutes.
 
+## Bugs this project's own tests caught (and what fixed them)
+
+Worth keeping visible rather than quietly fixed-and-forgotten — each of
+these was invisible until a *real* dependency (a real Postgres, a real
+ASGI websocket handshake, a CICIDS2017-shaped CSV) was actually exercised:
+
+- **The first-packet-loss bug** — see above.
+- **`/ws/alerts` crashed on every single connection attempt.** Its
+  `Depends(get_app_state)` sub-dependency was typed for an HTTP `Request`,
+  which FastAPI cannot supply to a websocket route (there is no `Request`
+  in a websocket scope) — it failed with a bare `TypeError: get_app_state()
+  missing 1 required positional argument`. Invisible to every test that
+  only exercised `WebSocketManager` directly; caught the moment a test
+  drove a real ASGI websocket handshake through the route
+  (`tests/integration/test_websocket.py`). Fixed by adding a
+  websocket-specific dependency, `nids.api.deps.get_app_state_ws`.
+- **`load_cicids2017` raised `KeyError` on any real input.** It mapped
+  CICFlowMeter's columns onto `FEATURE_COLUMNS` but never computed
+  `total_packets`/`total_bytes` — CICFlowMeter only has the forward/
+  backward halves, not the combined totals `FEATURE_COLUMNS` requires — so
+  `_clean()`'s `dropna` crashed looking for columns that were never
+  created. Zero test coverage had ever run this function against
+  real-shaped data (the real dataset is multi-GB and not bundled); caught
+  by a hand-built CSV shaped like real CICFlowMeter output
+  (`tests/unit/test_ml_datasets.py`). Fixed by deriving the two totals
+  from the forward/backward columns right after the rename.
+- **The test suite itself was flaky by construction, not by chance.**
+  `nids.db.session.init_engine()`/`get_sessionmaker()` are `@lru_cache`'d
+  — correct for a long-running server process (one engine for its whole
+  lifetime) — but pytest-asyncio's default per-function event loop tore
+  that loop down after each test, so whichever DB-touching test ran next
+  tried to clean up or reuse a pooled asyncpg connection against an
+  already-closed loop (`RuntimeError: Event loop is closed`). Not a
+  production bug — the app only ever runs one event loop for its whole
+  life — but a real trap for testing an app built this way. Fixed in
+  `pyproject.toml`, not application code:
+  `asyncio_default_fixture_loop_scope = "session"` and
+  `asyncio_default_test_loop_scope = "session"`, so the whole test session
+  shares one loop, matching the cached engine's actual lifetime assumption.
+
 ## Extending detection
 
 - **New signature**: add a rule to a YAML file under
