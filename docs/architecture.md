@@ -149,6 +149,44 @@ ASGI websocket handshake, a CICIDS2017-shaped CSV) was actually exercised:
   `asyncio_default_fixture_loop_scope = "session"` and
   `asyncio_default_test_loop_scope = "session"`, so the whole test session
   shares one loop, matching the cached engine's actual lifetime assumption.
+- **The containerized deployment loaded zero signature rules — and the
+  API couldn't reach Postgres either, silently.** Both only surfaced when
+  `docker compose up` was actually run for the first time, not from
+  reading the Dockerfile/compose file:
+  - `Settings.rules_dir`'s default was computed by walking up a fixed
+    number of parent directories from `config.py`'s own file location,
+    assuming a source-tree layout (`<repo root>/src/nids/config.py`).
+    That's true for an editable install but false for a real wheel
+    install (`site-packages/nids/config.py`) — exactly how the Dockerfile
+    installs the app — so `rules_dir` pointed at a path that never
+    existed, and the rule engine silently started with 0 rules loaded, no
+    error. Fixed by anchoring to `config.py`'s own package directory
+    (`Path(__file__).resolve().parent`) instead of a "project root"
+    guess — correct under any install mode, editable or wheel. Guarded by
+    `tests/unit/test_config.py`.
+  - The compose file's `api` service used `network_mode: host` so live
+    capture could see the host's real interfaces. On Docker Desktop
+    (Windows/Mac, where the engine runs inside a VM) that's a different
+    network namespace than "the actual host" — it broke two things at
+    once: the API stopped being reachable at `localhost:8000` from the
+    host at all, and, inside the container, the `postgres` hostname
+    became unresolvable (host-mode containers aren't attached to
+    compose's bridge network, which is what provides that DNS). The
+    second failure was invisible at startup specifically because
+    `NIDS_ENVIRONMENT=production` skips the dev-mode DB-connectivity probe
+    that would otherwise have logged a warning — so the app reported
+    "started successfully" while every future DB-backed request would
+    have failed. Fixed by switching `api` to the default bridge network
+    with an explicit `ports: ["8000:8000"]` — `network_mode: host` only
+    ever bought anything on native Linux Docker hosts in the first place,
+    and even there only for live capture, which the documented default
+    demo path (pcap replay) doesn't need at all.
+
+  Verified past "it builds" all the way through: `docker compose up
+  --build`, migrations ran, `POST /system/capture/start` replayed the
+  demo pcap through the running container, alerts showed up over
+  `GET /alerts` and in the dashboard's live feed in a real browser — with
+  console clean of errors.
 
 ## Extending detection
 

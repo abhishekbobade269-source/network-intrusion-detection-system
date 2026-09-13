@@ -43,13 +43,28 @@ services:
       NIDS_ML_MODEL_PATH: /app/models/anomaly_model.joblib
     volumes:
       - ./models:/app/models:ro
-    # Live capture needs these; omit both — and use `ports: ["8000:8000"]`
-    # instead of host networking — if you only want pcap replay / the API
-    # without live capture and don't want the container this privileged.
+    ports:
+      - "8000:8000"
+    # Only needed for live capture; harmless to leave on otherwise. Note
+    # what this does *not* get you: on the default bridge network below,
+    # the container can only sniff its own virtual veth interface, not
+    # the host's real NICs — actually seeing host traffic needs
+    # `network_mode: host` too, which in turn only works this way on
+    # native Linux Docker hosts (it puts the container in the *engine
+    # host's* network namespace). On Docker Desktop (Windows/Mac, where
+    # the engine runs inside a VM) `network_mode: host` was tried here
+    # and confirmed broken two different ways: the API stopped being
+    # reachable at localhost:8000 from the actual host at all, and it
+    # silently lost the ability to resolve the `postgres` hostname (no
+    # compose-network DNS in host mode) — invisible at startup because
+    # NIDS_ENVIRONMENT=production skips the dev-mode DB probe that would
+    # have logged it, so every DB-backed request would have failed at
+    # request time instead. Bridge + explicit ports, as below, is what
+    # actually works out of the box everywhere; pcap replay (the
+    # documented default demo path) needs none of this anyway.
     cap_add:
       - NET_RAW
       - NET_ADMIN
-    network_mode: "host" # simplest way to see the host's real interfaces for live capture
 
   dashboard:
     build:
