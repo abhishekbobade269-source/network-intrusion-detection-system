@@ -8,6 +8,7 @@ into one process — this is the "production" entrypoint
 
 from __future__ import annotations
 
+import secrets
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -108,6 +109,28 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     logger.info("app.startup", environment=settings.environment)
 
+    if settings.is_production and not settings.api_key:
+        # Fail-safe, not fail-open: NIDS_API_KEY gates capture start/stop
+        # and alert-acknowledge, but is optional and unset by default (see
+        # nids.api.deps.require_api_key) — a genuinely open door on any
+        # production deployment that forgets to set one, exactly the
+        # deployment this Dockerfile/docker-compose.yml produces if you
+        # don't. Generating and logging a one-time random key here means
+        # "just run it" stays safe by default instead of silently
+        # unauthenticated; set NIDS_API_KEY yourself for anything you'll
+        # actually reuse across restarts (a generated key changes every
+        # time the process restarts, precisely so nobody mistakes it for
+        # a stable credential).
+        settings.api_key = secrets.token_urlsafe(32)
+        logger.warning(
+            "app.no_api_key_configured_generated_one",
+            generated_api_key=settings.api_key,
+            hint=(
+                "NIDS_API_KEY was not set in production — generated a random one for "
+                "this run only. Set NIDS_API_KEY yourself for a stable credential."
+            ),
+        )
+
     engine = init_engine()
     if not settings.is_production:
         # Dev/test convenience only — production deployments should manage
@@ -120,7 +143,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             async with engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
         except Exception:  # noqa: BLE001 — startup DB probe, not a hard dependency here
-            logger.warning("app.startup_db_unreachable", database_url=settings.database_url)
+            logger.warning("app.startup_db_unreachable", database_url=settings.database_url_masked)
 
     detection_engine = _build_engine()
     notifier = AlertNotifier(settings.alert_webhook_url, Severity(settings.alert_min_severity))

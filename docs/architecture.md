@@ -188,6 +188,68 @@ ASGI websocket handshake, a CICIDS2017-shaped CSV) was actually exercised:
   `GET /alerts` and in the dashboard's live feed in a real browser — with
   console clean of errors.
 
+- **Live capture in the container needed two more fixes before it
+  actually worked**, found by deliberately trying it (a real port scan
+  from a second container) rather than trusting `cap_add`:
+  - `docker-compose.yml`'s `cap_add: [NET_RAW, NET_ADMIN]` alone did
+    nothing for a non-root process — Linux capabilities added to a
+    *container's* bounding set aren't automatically usable by a
+    non-root user inside it (`USER nids` in the Dockerfile) without file
+    capabilities on the actual binary. `sniff()` raised a bare
+    `PermissionError: Operation not permitted` until the Dockerfile
+    started actually running `setcap cap_net_raw,cap_net_admin=eip` on
+    the interpreter — `libcap2-bin` had been installed for exactly this
+    with a comment saying so, but the `setcap` invocation itself was
+    never added.
+  - Past that, `sniff(filter="ip or ip6")` raised
+    `Scapy_Exception: Cannot set filter: libpcap is not available` — the
+    slim Debian base image has no `libpcap`/`tcpdump`, which is what
+    scapy shells out to on Linux to compile a BPF filter string at all.
+    Fixed by installing `tcpdump` (pulls in `libpcap` as a dependency).
+
+  With both fixed: `POST /system/capture/start {"mode":"live","iface":"eth0"}`
+  against the running container, then a real `nc`-based port scan from a
+  second container on the same Docker network, produced genuine live
+  packets (`packets_seen` climbing in real time) and a real
+  `HOST_PORT_SCAN` alert — not a replay, an actual live capture, for the
+  first time since this project started (every prior session had no
+  Npcap/root capture rights available at all to test this with).
+
+- **A production deployment with no `NIDS_API_KEY` set — exactly what
+  `docker-compose.yml` produces by default — left every control endpoint
+  completely open.** Confirmed exploitable directly: `POST
+  /system/capture/stop` against the real running container succeeded
+  with zero credentials. Fixed fail-safe rather than fail-open:
+  `nids.api.main.lifespan` now generates a random key and logs it once
+  when `is_production` and no key is configured, instead of silently
+  requiring nothing. See `docs/threat_model.md`.
+
+- **`database_url` was logged with its password in plain text** on the
+  dev-mode DB-unreachable warning path — a real credential-leak risk
+  (that log line ends up in whatever aggregator/monitoring tool you ship
+  logs to). Fixed with `Settings.database_url_masked`, which redacts the
+  password before anything logs the DSN.
+
+- **`POST /system/capture/start` returned `200 "started"` for a pcap path
+  that could never work**, with the actual `FileNotFoundError` surfacing
+  only as a raw, unstructured Python traceback in server logs minutes
+  later, with zero feedback to the caller. Fixed two ways: the common
+  case (a missing/wrong `pcap_path`) is now validated synchronously and
+  rejected with an immediate `400`; anything that fails later, inside the
+  capture thread, is caught, logged cleanly through structlog instead of
+  crashing the thread silently, and recorded on
+  `DetectionRunner.last_error`, surfaced through `GET /stats/engine`'s
+  `last_capture_error` field and shown directly in the dashboard.
+
+- **The dashboard's own Docker container reported `unhealthy` forever**,
+  despite serving every request correctly — `docker compose ps` is
+  exactly the kind of thing a technical reviewer glances at. Root cause:
+  its `HEALTHCHECK` ran `wget http://localhost/`, which resolved to
+  `::1` first inside the container; nginx only listens on `0.0.0.0:80`
+  (IPv4), and busybox `wget` doesn't fall back to IPv4 after an IPv6
+  connection refusal. Fixed by hardcoding `127.0.0.1` in the healthcheck
+  instead of `localhost`.
+
 ## Extending detection
 
 - **New signature**: add a rule to a YAML file under

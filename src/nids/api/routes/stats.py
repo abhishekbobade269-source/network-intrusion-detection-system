@@ -25,4 +25,5 @@ async def get_engine_stats(state: AppState = Depends(get_app_state)) -> dict:
         "is_capturing": state.is_capturing,
         "capture_mode": state.capture_mode,
         "capture_source": state.capture_source,
+        "last_capture_error": state.runner.last_error if state.runner else None,
     }

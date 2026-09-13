@@ -184,3 +184,74 @@ async def test_start_live_capture_rejected_when_unavailable(
     response = await client.post("/system/capture/start", json={"mode": "live", "iface": "eth0"})
 
     assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_start_pcap_capture_rejected_synchronously_for_a_missing_file(
+    client: AsyncClient,
+) -> None:
+    """Regression test: this used to return 200 "started" for any
+    pcap_path, valid or not — the FileNotFoundError only ever surfaced as
+    a raw traceback in a background thread, invisible to the caller.
+    """
+    response = await client.post(
+        "/system/capture/start",
+        json={"mode": "pcap", "pcap_path": "definitely/does/not/exist.pcap"},
+    )
+
+    assert response.status_code == 400
+    assert "does not exist" in response.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_production_with_no_api_key_generates_one_instead_of_staying_open(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Regression test for a real gap: a production deployment (exactly
+    what docker-compose.yml produces) that forgets to set NIDS_API_KEY
+    used to leave every control endpoint completely unauthenticated —
+    confirmed exploitable by actually calling capture/start with no key
+    against the real container. Fail-safe fix: generate one at startup
+    and require it, rather than fail-open.
+    """
+    from nids.config import get_settings
+
+    if not FIXTURE.exists():
+        pytest.skip(f"demo fixture missing — run scripts/generate_demo_pcap.py ({FIXTURE})")
+
+    monkeypatch.setenv("NIDS_ENVIRONMENT", "production")
+    monkeypatch.delenv("NIDS_API_KEY", raising=False)
+    get_settings.cache_clear()
+    try:
+        app = create_app()
+        async with app.router.lifespan_context(app):
+            settings = get_settings()
+            assert settings.api_key, "expected a key to be generated for a keyless production run"
+            generated_key = settings.api_key
+
+            transport = ASGITransport(app=app)
+            async with AsyncClient(transport=transport, base_url="http://test") as client:
+                no_key_response = await client.post(
+                    "/system/capture/start", json={"mode": "pcap", "pcap_path": str(FIXTURE)}
+                )
+                assert no_key_response.status_code == 401
+
+                wrong_key_response = await client.post(
+                    "/system/capture/start",
+                    json={"mode": "pcap", "pcap_path": str(FIXTURE)},
+                    headers={"X-API-Key": "not-the-real-key"},
+                )
+                assert wrong_key_response.status_code == 401
+
+                right_key_response = await client.post(
+                    "/system/capture/start",
+                    json={"mode": "pcap", "pcap_path": str(FIXTURE)},
+                    headers={"X-API-Key": generated_key},
+                )
+                assert right_key_response.status_code == 200
+
+                runner_task = app.state.nids.runner_task
+                if runner_task is not None:
+                    await asyncio.wait_for(runner_task, timeout=15.0)
+    finally:
+        get_settings.cache_clear()

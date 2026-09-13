@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -79,6 +80,26 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.environment.lower() == "production"
+
+    @property
+    def database_url_masked(self) -> str:
+        """`database_url` with any password redacted — log/print this,
+        never the raw field. A real credential-leak risk otherwise: the
+        DSN embeds the DB password inline (`postgresql+asyncpg://user:pass@host/db`),
+        and this app used to log it verbatim on a startup-warning path —
+        exactly the kind of thing that ends up copy-pasted into a log
+        aggregator or an issue tracker.
+        """
+        parts = urlsplit(self.database_url)
+        if parts.password is None:
+            return self.database_url
+        userinfo = parts.username or ""
+        if parts.username:
+            userinfo += ":***"
+        netloc = f"{userinfo}@{parts.hostname or ''}"
+        if parts.port:
+            netloc += f":{parts.port}"
+        return urlunsplit((parts.scheme, netloc, parts.path, parts.query, parts.fragment))
 
 
 @lru_cache

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -61,6 +62,20 @@ async def start_capture(
             detail=(
                 "live capture unavailable in this environment (no interfaces / missing privileges)"
             ),
+        )
+
+    # Catch the single most common failure (a typo'd/missing path) here,
+    # synchronously, instead of letting it surface as a bare, uncaught
+    # exception in the background capture thread minutes later — this
+    # used to return 200 "started" for a pcap_path that could never work,
+    # with the actual FileNotFoundError visible only as a raw Python
+    # traceback in server logs, never to the caller. Doesn't cover every
+    # failure mode (a truncated/corrupt pcap can still fail mid-stream),
+    # but the common one is now an immediate, clear 400.
+    if body.mode == "pcap" and not Path(body.pcap_path).is_file():  # type: ignore[arg-type]
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            detail=f"pcap_path does not exist or is not a file: {body.pcap_path}",
         )
 
     settings = get_settings()

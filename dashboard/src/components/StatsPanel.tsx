@@ -22,6 +22,12 @@ export function StatsPanel({ alertStats, engineStats }: Props) {
         <Stat label="ML scoring" value={engineStats?.ml_enabled ? "enabled" : "disabled"} />
       </div>
 
+      {engineStats?.last_capture_error && (
+        <p className="error" title={engineStats.last_capture_error}>
+          Last capture failed: {engineStats.last_capture_error}
+        </p>
+      )}
+
       {alertStats && (
         <div className="severity-bars">
           {SEVERITY_ORDER.map((sev) => {

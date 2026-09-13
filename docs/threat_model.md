@@ -60,10 +60,16 @@ demonstration for)
 - **The API's write path is the other boundary.** `/system/capture/*` and
   `/alerts/{id}/acknowledge` are gated behind a static API key
   (`NIDS_API_KEY`) via `nids.api.deps.require_api_key` — unset in local
-  dev (no-op), **must** be set in any shared/production deployment — and
-  rate-limited per IP (`nids.api.limiter`, 20/minute by default) so a
-  leaked/guessed key or a misbehaving client can't hammer capture
-  start/stop or flood the acknowledge endpoint with no backpressure. Read
+  dev (no-op, `NIDS_ENVIRONMENT=development`). In production, an unset key
+  used to mean those endpoints were simply open — confirmed exploitable
+  against the actual Docker deployment — so `nids.api.main.lifespan` now
+  fails safe instead: if `is_production` and no key is configured, it
+  generates a random one and logs it once rather than leaving the door
+  open. Set `NIDS_API_KEY` yourself for a credential that survives a
+  restart. Also rate-limited per IP (`nids.api.limiter`, 20/minute by
+  default) so a leaked/guessed key or a misbehaving client can't hammer
+  capture start/stop or flood the acknowledge endpoint with no
+  backpressure. Read
   endpoints (`GET /alerts`, `/stats`, `/ws/alerts`) are unauthenticated and
   unlimited by design (a read-only dashboard); put this behind your own
   auth/reverse proxy if the deployment is anything but a private network.

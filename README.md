@@ -106,9 +106,19 @@ nids train --dataset cicids2017 \
 docker compose up --build
 ```
 
-Brings up Postgres, runs Alembic migrations, starts the API (with
-`NET_RAW`/`NET_ADMIN` for live capture — see `docker-compose.yml` for the
-tradeoffs), and the dashboard on `http://localhost:5173`.
+Brings up Postgres, runs Alembic migrations, starts the API on
+`http://localhost:8000` (with `NET_RAW`/`NET_ADMIN` plus a `setcap` on the
+interpreter — see `docker-compose.yml`/`Dockerfile` — so live capture on
+the container's own interface genuinely works, not just pcap replay), and
+the dashboard on `http://localhost:5173`.
+
+**No `NIDS_API_KEY` set?** Capture start/stop and acknowledging alerts
+need one — rather than leaving those endpoints open, the API generates a
+random key at startup and logs it once:
+`docker compose logs api | grep generated_api_key`. Set `NIDS_API_KEY`
+yourself (in `docker-compose.yml` or your `.env`) for a key that survives
+a restart; paste whichever one you're using into the dashboard's
+"Capture control" panel.
 
 ## Project layout
 

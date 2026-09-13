@@ -40,6 +40,13 @@ class DetectionRunner:
         self.poll_interval_s = poll_interval_s
         self._live_sniffer: LiveSniffer | None = None
         self._running = False
+        #: Set if the capture source raised (bad/corrupt pcap mid-stream,
+        #: a live-capture privilege error, ...). Previously such failures
+        #: were only visible as a raw, unstructured Python traceback from
+        #: a background thread — `/stats/engine` surfaces this field so
+        #: an operator has *something* better than "packets_seen stayed
+        #: at 0 and capture just quietly stopped" to go on.
+        self.last_error: str | None = None
 
     @property
     def is_running(self) -> bool:
@@ -76,6 +83,7 @@ class DetectionRunner:
         loop = asyncio.get_running_loop()
         queue: asyncio.Queue[object] = asyncio.Queue(maxsize=_QUEUE_MAXSIZE)
         self._running = True
+        self.last_error = None
 
         def _pump() -> None:
             try:
@@ -83,6 +91,9 @@ class DetectionRunner:
                     if not self._running:
                         break
                     loop.call_soon_threadsafe(queue.put_nowait, pkt)
+            except Exception as exc:  # noqa: BLE001 — reported via last_error, not re-raised
+                self.last_error = f"{type(exc).__name__}: {exc}"
+                logger.error("capture.pump_failed", error=self.last_error)
             finally:
                 loop.call_soon_threadsafe(queue.put_nowait, _SHUTDOWN)
 

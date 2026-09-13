@@ -49,6 +49,7 @@ export interface EngineStats {
   is_capturing: boolean;
   capture_mode: string | null;
   capture_source: string | null;
+  last_capture_error: string | null;
 }
 
 export interface Capabilities {

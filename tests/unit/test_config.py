@@ -49,3 +49,20 @@ def test_default_rules_dir_is_independent_of_cwd(tmp_path: Path, monkeypatch) ->
     settings = Settings(_env_file=None)
 
     assert settings.rules_dir.is_dir()
+
+
+def test_database_url_masked_redacts_password() -> None:
+    settings = Settings(
+        _env_file=None, database_url="postgresql+asyncpg://nids:s3cr3t@dbhost:5432/nids"
+    )
+
+    masked = settings.database_url_masked
+
+    assert "s3cr3t" not in masked
+    assert masked == "postgresql+asyncpg://nids:***@dbhost:5432/nids"
+
+
+def test_database_url_masked_leaves_passwordless_url_unchanged() -> None:
+    settings = Settings(_env_file=None, database_url="postgresql+asyncpg://dbhost:5432/nids")
+
+    assert settings.database_url_masked == settings.database_url
