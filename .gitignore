@@ -35,11 +35,9 @@ models/*.metrics.json
 dashboard/node_modules/
 dashboard/dist/
 
-# Editors / OS
+# Editors / OS / local tooling state
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
-
-# Claude
 .claude/settings.local.json
