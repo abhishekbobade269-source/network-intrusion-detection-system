@@ -278,14 +278,13 @@ export function Landing() {
         </div>
         <PipelineTrack />
         <div className="pipeline-steps">
-          {PIPELINE.map((step) => (
+          {PIPELINE.map((step, i) => (
             <motion.div
               key={step.n}
               className="pipeline-step"
               initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-60px" }}
-              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 * i, ease: [0.16, 1, 0.3, 1] }}
             >
               <span className="pipeline-step-icon">
                 <step.icon size={17} />
@@ -300,14 +299,13 @@ export function Landing() {
 
       <section className="features">
         <div className="feature-grid">
-          {FEATURES.map((f) => (
+          {FEATURES.map((f, i) => (
             <motion.div
               key={f.title}
               className="feature-card"
               initial={{ opacity: 0, y: 12 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-60px" }}
-              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.06 * i, ease: [0.16, 1, 0.3, 1] }}
             >
               <span className="feature-card-icon">
                 <f.icon size={20} />
