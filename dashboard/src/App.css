@@ -194,24 +194,16 @@
   height: 100%;
 }
 
-.sev-low,
 .bar-fill.sev-low {
-  color: var(--low);
   background: var(--low);
 }
-.sev-medium,
 .bar-fill.sev-medium {
-  color: var(--medium);
   background: var(--medium);
 }
-.sev-high,
 .bar-fill.sev-high {
-  color: var(--high);
   background: var(--high);
 }
-.sev-critical,
 .bar-fill.sev-critical {
-  color: var(--critical);
   background: var(--critical);
 }
 
@@ -219,16 +211,6 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   text-align: right;
-}
-
-.sev-pill {
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  border: 1px solid currentColor;
 }
 
 .field {

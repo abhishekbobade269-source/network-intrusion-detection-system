@@ -85,6 +85,24 @@ export function GithubMarkIcon({ size = 16, className }: IconProps) {
   );
 }
 
+export function PulseIcon({ size = 20, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>
+      <path d="M2.5 12h4l2-6 3 12 2.5-9 1.5 3h6.5" />
+    </svg>
+  );
+}
+
+export function StackIcon({ size = 20, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>
+      <path d="M12 3l8.5 4.5L12 12 3.5 7.5 12 3z" />
+      <path d="M3.5 12l8.5 4.5 8.5-4.5" />
+      <path d="M3.5 16.5L12 21l8.5-4.5" />
+    </svg>
+  );
+}
+
 export function LockIcon({ size = 18, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" className={className} {...base}>

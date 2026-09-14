@@ -1,15 +1,22 @@
-import { motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { ThemeSwitcher } from "../components/ThemeSwitcher";
 import { SignalScope } from "../components/SignalScope";
 import {
   ArrowRightIcon,
   GithubMarkIcon,
+  LockIcon,
+  PulseIcon,
   RadarIcon,
   ScopeIcon,
   ShieldIcon,
+  StackIcon,
   TowerIcon,
 } from "../components/icons";
+import { SCENARIOS } from "../demoFixtures";
+import { injectScenario } from "../demoStore";
+import type { LiveDetection } from "../types";
 import "./Landing.css";
 
 const REPO_URL = "https://github.com/abhishekbobade269-source/network-intrusion-detection-system";
@@ -32,23 +39,27 @@ const item = {
 const PIPELINE = [
   {
     n: "01",
+    icon: TowerIcon,
     title: "Capture",
-    body: "Live packet capture off a real NIC, or offline replay of a pcap / CICIDS2017 dataset — same code path either way.",
+    body: "Live packet capture off a real NIC, or offline replay of a pcap / CICIDS2017 dataset — the same code path either way.",
   },
   {
     n: "02",
+    icon: ScopeIcon,
     title: "Extract",
-    body: "Per-flow features: packet and byte counts, inter-arrival timing, TCP flag ratios, duration.",
+    body: "FlowTracker aggregates packets into per-flow features: counts, byte volume, inter-arrival timing, TCP flag ratios.",
   },
   {
     n: "03",
+    icon: ShieldIcon,
     title: "Detect",
-    body: "YAML signature rules plus a stateful port-scan detector, alongside an Isolation-Forest model trained only on benign traffic.",
+    body: "The DetectionEngine runs YAML signature rules and a stateful port-scan detector alongside an Isolation-Forest anomaly score.",
   },
   {
     n: "04",
+    icon: PulseIcon,
     title: "Alert",
-    body: "A rate-limited FastAPI + websocket API, PostgreSQL-backed, streamed live into this dashboard.",
+    body: "Findings hit AlertStore (Postgres) and /ws/alerts in the same instant — this dashboard streams them live.",
   },
 ];
 
@@ -68,6 +79,33 @@ const FEATURES = [
     title: "Live or replay capture",
     body: "Point it at a live interface or replay a recorded capture. The detection engine underneath doesn't know the difference.",
   },
+  {
+    icon: LockIcon,
+    title: "Fail-safe, not fail-open",
+    body: "No NIDS_API_KEY set? The API generates and logs one at startup instead of leaving every control endpoint open — every route sits behind a rate limiter too.",
+  },
+  {
+    icon: PulseIcon,
+    title: "Live, not eventually",
+    body: "Every finding is persisted to PostgreSQL and pushed over a websocket feed in the same instant — the dashboard and the database never disagree.",
+  },
+  {
+    icon: StackIcon,
+    title: "One command to run it",
+    body: "docker compose up --build — FastAPI, PostgreSQL, and this dashboard, healthchecked and wired together end to end.",
+  },
+];
+
+const TECH_STACK = [
+  "Python",
+  "FastAPI",
+  "PostgreSQL",
+  "scapy",
+  "scikit-learn",
+  "React 19",
+  "Vite",
+  "Framer Motion",
+  "Docker Compose",
 ];
 
 /** Faux telemetry for the hero panel — ticks so the panel reads as
@@ -84,6 +122,79 @@ function useSimulatedReadout(base: number, jitter: number) {
   return value;
 }
 
+function PipelineTrack() {
+  const reduceMotion = useReducedMotion();
+  return (
+    <div className="pipeline-track">
+      {!reduceMotion && (
+        <motion.div
+          className="pipeline-track-dot"
+          initial={{ left: "0%" }}
+          animate={{ left: "100%" }}
+          transition={{ duration: 3.2, repeat: Infinity, ease: "linear" }}
+        />
+      )}
+    </div>
+  );
+}
+
+function ScenarioLab() {
+  const [flash, setFlash] = useState<LiveDetection | null>(null);
+
+  const trigger = (ruleId: string) => {
+    const detection = injectScenario(ruleId);
+    if (!detection) return;
+    setFlash(detection);
+    window.setTimeout(() => {
+      setFlash((cur) => (cur === detection ? null : cur));
+    }, 5000);
+  };
+
+  return (
+    <section className="scenario-lab">
+      <div className="scenario-lab-panel">
+        <div className="scenario-lab-head">
+          <span className="eyebrow">Customize this demo</span>
+          <h2>Try a detection scenario</h2>
+          <p>
+            Fire one of the real detectors against the replayed capture. It's recorded into the
+            console's alert history exactly like a live finding would be — enter the console
+            after and it'll be sitting at the top of the table.
+          </p>
+        </div>
+        <div className="scenario-chips">
+          {SCENARIOS.map((s) => (
+            <button
+              key={s.ruleId}
+              type="button"
+              className="scenario-chip"
+              style={{ ["--chip-sev" as string]: `var(--${s.severity})` }}
+              onClick={() => trigger(s.ruleId)}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+        <AnimatePresence>
+          {flash && (
+            <motion.div
+              className="scenario-flash"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+              transition={{ duration: 0.35 }}
+            >
+              <span className={`sev-pill sev-${flash.severity}`}>{flash.severity}</span>
+              <strong>{flash.name}</strong>
+              <span>{flash.description}</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </section>
+  );
+}
+
 export function Landing() {
   const packetsPerSec = useSimulatedReadout(1840, 420);
   const activeFlows = useSimulatedReadout(11, 6);
@@ -96,12 +207,8 @@ export function Landing() {
           <span>NIDS</span>
         </span>
         <div className="landing-nav-links">
-          <a
-            className="text-link"
-            href={REPO_URL}
-            target="_blank"
-            rel="noreferrer"
-          >
+          <ThemeSwitcher />
+          <a className="text-link" href={REPO_URL} target="_blank" rel="noreferrer">
             <GithubMarkIcon size={15} />
             Source
           </a>
@@ -112,12 +219,7 @@ export function Landing() {
         </div>
       </nav>
 
-      <motion.header
-        className="hero"
-        initial="hidden"
-        animate="visible"
-        variants={container}
-      >
+      <motion.header className="hero" initial="hidden" animate="visible" variants={container}>
         <div className="hero-copy">
           <motion.span className="eyebrow" variants={item}>
             [ Live product demo ]
@@ -174,6 +276,7 @@ export function Landing() {
         <div className="pipeline-heading">
           <h2>How a packet gets flagged</h2>
         </div>
+        <PipelineTrack />
         <div className="pipeline-steps">
           {PIPELINE.map((step) => (
             <motion.div
@@ -184,6 +287,9 @@ export function Landing() {
               viewport={{ once: true, margin: "-60px" }}
               transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
             >
+              <span className="pipeline-step-icon">
+                <step.icon size={17} />
+              </span>
               <span className="pipeline-step-number">{step.n}</span>
               <h3>{step.title}</h3>
               <p>{step.body}</p>
@@ -212,6 +318,19 @@ export function Landing() {
           ))}
         </div>
       </section>
+
+      <section className="tech-stack">
+        <span className="eyebrow tech-stack-label">Under the hood</span>
+        <div className="tech-chips">
+          {TECH_STACK.map((t) => (
+            <span key={t} className="tech-chip">
+              {t}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <ScenarioLab />
 
       <footer className="landing-footer">
         <span>Synthetic, replayed traffic — not a live network feed.</span>

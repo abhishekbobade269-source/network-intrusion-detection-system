@@ -33,6 +33,12 @@
   gap: 18px;
 }
 
+@media (max-width: 560px) {
+  .landing-nav-links .theme-switcher {
+    display: none;
+  }
+}
+
 .landing-nav-links a.text-link {
   display: inline-flex;
   align-items: center;
@@ -188,11 +194,47 @@
   margin: 0;
 }
 
+.pipeline-track {
+  position: relative;
+  height: 2px;
+  background: var(--border);
+  margin: 0 36px 40px;
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .pipeline-track {
+    display: block;
+  }
+}
+
+.pipeline-track-dot {
+  position: absolute;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 12px 2px color-mix(in srgb, var(--accent) 65%, transparent);
+}
+
 .pipeline-steps {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 20px;
   position: relative;
+}
+
+.pipeline-step-icon {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--panel-raised);
+  color: var(--accent);
+  margin-bottom: 2px;
 }
 
 @media (max-width: 900px) {
@@ -286,6 +328,105 @@
   color: var(--muted);
   line-height: 1.6;
   margin: 0;
+}
+
+/* Tech stack strip */
+.tech-stack {
+  padding: 0 clamp(16px, 4vw, 56px) clamp(40px, 5vw, 64px);
+  max-width: 1280px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.tech-stack-label {
+  margin-bottom: 14px;
+}
+
+.tech-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.tech-chip {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 14px;
+}
+
+/* Scenario lab — the "customize the demo" section */
+.scenario-lab {
+  padding: clamp(32px, 5vw, 56px) clamp(16px, 4vw, 56px);
+  max-width: 1280px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.scenario-lab-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: clamp(20px, 4vw, 32px);
+}
+
+.scenario-lab-head h2 {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 600;
+  margin: 10px 0 8px;
+}
+
+.scenario-lab-head p {
+  color: var(--muted);
+  font-size: 0.92rem;
+  max-width: 60ch;
+  margin: 0 0 22px;
+  line-height: 1.6;
+}
+
+.scenario-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.scenario-chip {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text);
+  background: var(--panel-raised);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--chip-sev, var(--muted));
+  border-radius: var(--radius-sm);
+  padding: 9px 14px;
+  cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.scenario-chip:hover {
+  transform: translateY(-1px);
+  border-color: var(--chip-sev, var(--accent-2));
+}
+
+.scenario-flash {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 0.88rem;
+  color: var(--text-dim);
+  border-top: 1px solid var(--border-soft);
+  padding-top: 16px;
+}
+
+.scenario-flash strong {
+  color: var(--text);
 }
 
 .landing-footer {

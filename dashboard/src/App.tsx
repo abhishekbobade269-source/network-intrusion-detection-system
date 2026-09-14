@@ -1,5 +1,6 @@
 import type { JSX } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
+import { ThemeBoot } from "./components/ThemeSwitcher";
 import { isDemoAuthed } from "./demoAuth";
 import { DEMO_MODE } from "./demoStore";
 import { Dashboard } from "./pages/Dashboard";
@@ -20,19 +21,22 @@ function App() {
   }
 
   return (
-    <Routes>
-      <Route path="/" element={<Landing />} />
-      <Route path="/login" element={<Login />} />
-      <Route
-        path="/dashboard"
-        element={
-          <RequireDemoAuth>
-            <Dashboard />
-          </RequireDemoAuth>
-        }
-      />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+    <>
+      <ThemeBoot />
+      <Routes>
+        <Route path="/" element={<Landing />} />
+        <Route path="/login" element={<Login />} />
+        <Route
+          path="/dashboard"
+          element={
+            <RequireDemoAuth>
+              <Dashboard />
+            </RequireDemoAuth>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </>
   );
 }
 

@@ -1,4 +1,4 @@
-import { buildInitialAlerts, nextLiveDetection } from "./demoFixtures";
+import { buildInitialAlerts, detectionForRuleId, nextLiveDetection } from "./demoFixtures";
 import type { Alert, LiveDetection } from "./types";
 
 /**
@@ -30,11 +30,7 @@ function uuidFromDetection(d: LiveDetection): string {
   return `live-${d.at}-${d.rule_id}-${Math.random().toString(16).slice(2, 10)}`;
 }
 
-/** Advances the simulated feed by one detection, recording it into the
- * alert history too, and returns it for the live feed to broadcast.
- */
-export function tickDemoFeed(): LiveDetection {
-  const detection = nextLiveDetection();
+function recordDetection(detection: LiveDetection): LiveDetection {
   const alert: Alert = {
     id: uuidFromDetection(detection),
     created_at: detection.at,
@@ -54,6 +50,23 @@ export function tickDemoFeed(): LiveDetection {
   };
   alerts = [alert, ...alerts].slice(0, 300);
   return detection;
+}
+
+/** Advances the simulated feed by one detection, recording it into the
+ * alert history too, and returns it for the live feed to broadcast.
+ */
+export function tickDemoFeed(): LiveDetection {
+  return recordDetection(nextLiveDetection());
+}
+
+/** Fires one specific detector on demand — the Landing page's scenario
+ * picker uses this so a visitor can trigger e.g. a port scan by name.
+ * The alert lands in this same store, so it's already sitting in the
+ * console's history if they go on to /dashboard. */
+export function injectScenario(ruleId: string): LiveDetection | null {
+  const base = detectionForRuleId(ruleId);
+  if (!base) return null;
+  return recordDetection({ ...base, at: new Date().toISOString() });
 }
 
 export function acknowledgeDemoAlert(id: string): Alert | null {

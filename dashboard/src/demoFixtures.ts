@@ -206,17 +206,9 @@ export const DEMO_CAPABILITIES: Capabilities = {
   rules_loaded: 9,
 };
 
-let liveSeed = 1000;
-
-/** Synthesizes one more "live" detection — same shape a real websocket
- * push carries — cycling through the recorded fixture set.
- */
-export function nextLiveDetection(): LiveDetection {
-  const f = FIXTURES[liveSeed % FIXTURES.length];
-  liveSeed += 1;
+function toDetectionBase(f: FixtureAlert): Omit<LiveDetection, "at"> {
   return {
     type: "detection",
-    at: new Date().toISOString(),
     rule_id: f.rule_id,
     name: f.name,
     detector: f.detector,
@@ -228,3 +220,41 @@ export function nextLiveDetection(): LiveDetection {
     dst_port: f.dst_port,
   };
 }
+
+let liveSeed = 1000;
+
+/** Synthesizes one more "live" detection — same shape a real websocket
+ * push carries — cycling through the recorded fixture set.
+ */
+export function nextLiveDetection(): LiveDetection {
+  const f = FIXTURES[liveSeed % FIXTURES.length];
+  liveSeed += 1;
+  return { ...toDetectionBase(f), at: new Date().toISOString() };
+}
+
+/** Looks up a specific fixture by rule id, for the Landing page's
+ * scenario picker — trigger exactly the detector someone clicked on,
+ * rather than whatever's next in the cycle. */
+export function detectionForRuleId(ruleId: string): Omit<LiveDetection, "at"> | null {
+  const f = FIXTURES.find((x) => x.rule_id === ruleId);
+  return f ? toDetectionBase(f) : null;
+}
+
+export interface Scenario {
+  ruleId: string;
+  label: string;
+  severity: Alert["severity"];
+}
+
+/** One entry per distinct detector, in the order the fixture set defines
+ * them — the two ML_ANOMALY fixtures collapse to a single scenario. */
+export const SCENARIOS: Scenario[] = (() => {
+  const seen = new Set<string>();
+  const out: Scenario[] = [];
+  for (const f of FIXTURES) {
+    if (seen.has(f.rule_id)) continue;
+    seen.add(f.rule_id);
+    out.push({ ruleId: f.rule_id, label: f.name, severity: f.severity });
+  }
+  return out;
+})();

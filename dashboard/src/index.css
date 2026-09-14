@@ -105,6 +105,32 @@ a {
   font-variant-numeric: tabular-nums;
 }
 
+/* Severity color + pill — shared by the Dashboard's alert table/stats
+ * and the Landing page's scenario picker, so a color always means the
+ * same thing everywhere in the app. */
+.sev-low {
+  color: var(--low);
+}
+.sev-medium {
+  color: var(--medium);
+}
+.sev-high {
+  color: var(--high);
+}
+.sev-critical {
+  color: var(--critical);
+}
+
+.sev-pill {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1px solid currentColor;
+}
+
 /* Shared button primitives — Landing/Login/Dashboard all draw from these. */
 .btn {
   display: inline-flex;
@@ -152,6 +178,29 @@ a {
 .btn-ghost:not(:disabled):hover {
   border-color: var(--accent-2);
   color: var(--accent-2);
+}
+
+/*
+ * Alternate signal palettes — only --accent/--accent-2 (and their ink
+ * pairs) change; neutrals and severity colors stay put so alerts never
+ * get harder to read. Picked from the switcher on the Landing page and
+ * persisted (see theme.ts); "brass" (the bare :root above) is the
+ * default and needs no override block of its own.
+ */
+:root[data-theme="crimson"] {
+  --accent: #e0475e;
+  --accent-strong: #ec6b7e;
+  --accent-ink: #2a0810;
+  --accent-2: #7c9cff;
+  --accent-2-ink: #0a1233;
+}
+
+:root[data-theme="violet"] {
+  --accent: #b98cf0;
+  --accent-strong: #cba8f5;
+  --accent-ink: #1e1230;
+  --accent-2: #58e6a6;
+  --accent-2-ink: #06281b;
 }
 
 @media (prefers-reduced-motion: reduce) {

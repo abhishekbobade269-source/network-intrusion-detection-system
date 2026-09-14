@@ -1,0 +1,26 @@
+.theme-switcher {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.theme-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 0;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.theme-swatch:hover {
+  transform: scale(1.12);
+}
+
+.theme-swatch.is-active {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--text);
+}

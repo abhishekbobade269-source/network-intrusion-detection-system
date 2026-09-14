@@ -127,6 +127,44 @@ Fraunces/Work Sans/IBM Plex Mono):
 - Verified: `tsc -b`, `oxlint src`, and both `npm run build` and
   `npm run build:demo` are clean.
 
+## Landing page, round two: more real features, made interactive
+
+Follow-up on the flow above — expanded it rather than just polishing it,
+since "console looks good" but Landing needed to earn that:
+
+- **Feature grid grew from 3 to 6 cards**, pulling straight from the
+  project's actual README/architecture doc instead of generic copy:
+  fail-safe API key generation + per-route rate limiting, the
+  Postgres+websocket write path, and the one-command Docker Compose
+  deploy sit alongside the original signature/ML/capture three.
+- **"Under the hood" tech strip** — a chip row (Python, FastAPI,
+  PostgreSQL, scapy, scikit-learn, React 19, Vite, Framer Motion, Docker
+  Compose) naming what's actually in this repo, not a generic stack.
+- **The 4-step pipeline is now a real flow diagram**: each step has an
+  icon (matched to the actual component — FlowTracker, DetectionEngine,
+  AlertStore/`/ws/alerts`), connected by a track with a Framer Motion
+  dot animating along it end to end (skipped under
+  `prefers-reduced-motion`, via `useReducedMotion`).
+- **A scenario picker — the actual "customize" feature**: `demoStore.ts`
+  now exposes `injectScenario(ruleId)`, so a chip row on Landing
+  (`SCENARIOS`, derived from the same fixtures the console replays) lets
+  a visitor fire any one of the 7 real detectors on demand. It's
+  recorded into the same in-memory store `Dashboard` reads from, so
+  clicking through to the console afterward, that alert is already
+  sitting at the top of the table — not a separate, disconnected demo.
+- **A theme switcher** (`theme.ts`, `components/ThemeSwitcher.tsx`) —
+  three signal palettes (brass/crimson/violet) that only ever swap
+  `--accent`/`--accent-2`, never the neutrals or severity ramp, so
+  nothing gets harder to read. Persisted to `localStorage`, applied via
+  a `data-theme` attribute at the document root, so it's global across
+  Landing/Login/Dashboard.
+- Fixed a real pre-existing bug while touching this CSS: `.sev-{severity}`
+  set `color` and `background` to the same value, which made the
+  severity label text in the Overview panel's bars invisible against its
+  own background. Split into a text-only class (shared, now in
+  `index.css`) and a separate `.bar-fill.sev-*` background-only class.
+- Verified again: `tsc -b`, `oxlint src`, both builds clean.
+
 ## Still open
 
 - **Never trained on real CICIDS2017 data** — loader is test-verified
