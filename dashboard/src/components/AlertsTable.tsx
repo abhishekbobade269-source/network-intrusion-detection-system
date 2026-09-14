@@ -1,3 +1,4 @@
+import { AnimatePresence, motion } from "framer-motion";
 import type { Alert, LiveDetection } from "../types";
 
 interface Row {
@@ -43,6 +44,22 @@ function fromLive(d: LiveDetection, index: number): Row {
   };
 }
 
+function RowCells({ row }: { row: Row }) {
+  return (
+    <>
+      <td className="mono">{new Date(row.at).toLocaleTimeString()}</td>
+      <td>
+        <span className={`sev-pill sev-${row.severity}`}>{row.severity}</span>
+      </td>
+      <td>{row.detector}</td>
+      <td title={row.description}>{row.name}</td>
+      <td className="mono">{row.src}</td>
+      <td className="mono">{row.dst}</td>
+      <td className="mono">{(row.confidence * 100).toFixed(0)}%</td>
+    </>
+  );
+}
+
 interface Props {
   alerts: Alert[];
   live: LiveDetection[];
@@ -82,19 +99,25 @@ export function AlertsTable({ alerts, live }: Props) {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
-                <tr key={row.key} className={row.live ? "row-live" : undefined}>
-                  <td>{new Date(row.at).toLocaleTimeString()}</td>
-                  <td>
-                    <span className={`sev-pill sev-${row.severity}`}>{row.severity}</span>
-                  </td>
-                  <td>{row.detector}</td>
-                  <td title={row.description}>{row.name}</td>
-                  <td className="mono">{row.src}</td>
-                  <td className="mono">{row.dst}</td>
-                  <td>{(row.confidence * 100).toFixed(0)}%</td>
-                </tr>
-              ))}
+              <AnimatePresence initial={false}>
+                {rows.map((row) =>
+                  row.live ? (
+                    <motion.tr
+                      key={row.key}
+                      layout
+                      initial={{ opacity: 0, y: -8, backgroundColor: "rgba(211, 160, 60, 0.22)" }}
+                      animate={{ opacity: 1, y: 0, backgroundColor: "rgba(211, 160, 60, 0)" }}
+                      transition={{ duration: 1.1, ease: "easeOut" }}
+                    >
+                      <RowCells row={row} />
+                    </motion.tr>
+                  ) : (
+                    <tr key={row.key}>
+                      <RowCells row={row} />
+                    </tr>
+                  ),
+                )}
+              </AnimatePresence>
             </tbody>
           </table>
         </div>

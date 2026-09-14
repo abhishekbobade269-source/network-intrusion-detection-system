@@ -1,75 +1,38 @@
-import { useCallback, useEffect, useState } from "react";
-import "./App.css";
-import { fetchAlertStats, fetchAlerts, fetchCapabilities, fetchEngineStats } from "./api";
-import { AlertsTable } from "./components/AlertsTable";
-import { CaptureControl } from "./components/CaptureControl";
-import { ConnectionBadge } from "./components/ConnectionBadge";
-import { StatsPanel } from "./components/StatsPanel";
+import type { JSX } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
+import { isDemoAuthed } from "./demoAuth";
 import { DEMO_MODE } from "./demoStore";
-import { useAlertsFeed } from "./hooks/useAlertsFeed";
-import type { Alert, AlertStats, Capabilities, EngineStats } from "./types";
+import { Dashboard } from "./pages/Dashboard";
+import { Landing } from "./pages/Landing";
+import { Login } from "./pages/Login";
 
-const POLL_INTERVAL_MS = 5000;
+function RequireDemoAuth({ children }: { children: JSX.Element }) {
+  return isDemoAuthed() ? children : <Navigate to="/login" replace />;
+}
 
 function App() {
-  const { connected, live } = useAlertsFeed();
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [alertStats, setAlertStats] = useState<AlertStats | null>(null);
-  const [engineStats, setEngineStats] = useState<EngineStats | null>(null);
-  const [capabilities, setCapabilities] = useState<Capabilities | null>(null);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-
-  const refresh = useCallback(() => {
-    Promise.all([fetchAlerts({ limit: 100 }), fetchAlertStats(), fetchEngineStats()])
-      .then(([a, s, e]) => {
-        setAlerts(a);
-        setAlertStats(s);
-        setEngineStats(e);
-        setFetchError(null);
-      })
-      .catch((err: unknown) => setFetchError(String(err)));
-  }, []);
-
-  useEffect(() => {
-    fetchCapabilities().then(setCapabilities).catch(() => undefined);
-    refresh();
-    const id = setInterval(refresh, POLL_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, [refresh]);
+  // Outside demo mode this is the real, backend-connected dashboard — an
+  // operator running `docker compose up` should land straight on it, not
+  // on marketing copy or a decorative login. The Landing → Login flow
+  // only exists for the portfolio-facing demo build.
+  if (!DEMO_MODE) {
+    return <Dashboard />;
+  }
 
   return (
-    <div className="app">
-      {DEMO_MODE && (
-        <div className="demo-banner">
-          <span className="demo-badge">DEMO</span>
-          Synthetic, replayed traffic — not a live network feed.{" "}
-          <a href="https://github.com/abhishekbobade269-source/network-intrusion-detection-system">
-            Real detection engine + source on GitHub ↗
-          </a>
-        </div>
-      )}
-
-      <header className="app-header">
-        <h1>NIDS — live alerts</h1>
-        <ConnectionBadge connected={connected} />
-      </header>
-
-      {fetchError && (
-        <p className="error">
-          Couldn't reach the API ({fetchError}) — is it running and is VITE_API_BASE_URL correct?
-        </p>
-      )}
-
-      <main className="layout">
-        <div className="column">
-          <StatsPanel alertStats={alertStats} engineStats={engineStats} />
-          <CaptureControl capabilities={capabilities} engineStats={engineStats} onChanged={refresh} />
-        </div>
-        <div className="column column-wide">
-          <AlertsTable alerts={alerts} live={live} />
-        </div>
-      </main>
-    </div>
+    <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/login" element={<Login />} />
+      <Route
+        path="/dashboard"
+        element={
+          <RequireDemoAuth>
+            <Dashboard />
+          </RequireDemoAuth>
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
 

@@ -1,37 +1,4 @@
-:root {
-  color-scheme: dark;
-  --bg: #0b0f14;
-  --panel: #131a22;
-  --border: #223040;
-  --text: #e6edf3;
-  --muted: #8b98a5;
-  --accent: #4da3ff;
-
-  --low: #6b7280;
-  --medium: #d9a441;
-  --high: #e0703f;
-  --critical: #e0475e;
-
-  /* Distinct from the severity ramp on purpose — a cool violet reads as
-     "informational / synthetic," never mistakable for a real alert state. */
-  --demo: #9b8cf2;
-  --demo-bg: #1a1530;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family:
-    "Segoe UI",
-    system-ui,
-    -apple-system,
-    sans-serif;
-}
+/* Dashboard-specific layout. Shared tokens/primitives live in index.css. */
 
 .app {
   max-width: 1200px;
@@ -48,12 +15,44 @@ body {
   margin-bottom: 20px;
 }
 
+.app-header-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .app-header h1 {
-  font-family: "JetBrains Mono", ui-monospace, Consolas, monospace;
-  font-weight: 700;
-  font-size: 1.4rem;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.7rem;
   letter-spacing: -0.01em;
   margin: 0;
+}
+
+.app-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.exit-console {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  text-decoration: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 7px 12px;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.exit-console:hover {
+  color: var(--accent-2);
+  border-color: var(--accent-2);
 }
 
 .demo-banner {
@@ -61,9 +60,9 @@ body {
   align-items: center;
   flex-wrap: wrap;
   gap: 10px;
-  background: var(--demo-bg);
-  border: 1px solid var(--demo);
-  border-radius: 8px;
+  background: var(--bg-soft);
+  border: 1px solid var(--accent-2);
+  border-radius: var(--radius-sm);
   padding: 10px 14px;
   margin-bottom: 16px;
   font-size: 0.85rem;
@@ -71,17 +70,17 @@ body {
 }
 
 .demo-banner a {
-  color: var(--demo);
+  color: var(--accent-2);
   font-weight: 600;
 }
 
 .demo-badge {
-  font-family: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  font-family: var(--font-mono);
   font-weight: 700;
   font-size: 0.72rem;
   letter-spacing: 0.08em;
-  color: var(--demo-bg);
-  background: var(--demo);
+  color: var(--accent-2-ink);
+  background: var(--accent-2);
   border-radius: 4px;
   padding: 3px 7px;
   flex-shrink: 0;
@@ -91,7 +90,8 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
   color: var(--muted);
 }
 
@@ -103,7 +103,8 @@ body {
 }
 
 .badge-ok .dot {
-  background: #3fb950;
+  background: var(--accent-2);
+  box-shadow: 0 0 0 3px rgba(73, 201, 194, 0.18);
 }
 
 .layout {
@@ -128,16 +129,18 @@ body {
 .panel {
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 16px;
+  border-radius: var(--radius-md);
+  padding: 18px;
 }
 
 .panel h2 {
-  margin: 0 0 12px;
-  font-size: 1rem;
+  margin: 0 0 14px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
   color: var(--muted);
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.1em;
+  font-weight: 600;
 }
 
 .stat-grid {
@@ -148,19 +151,22 @@ body {
 }
 
 .stat {
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: 8px;
-  padding: 10px;
+  background: var(--panel-raised);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
 }
 
 .stat-value {
-  font-size: 1.25rem;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.3rem;
   font-weight: 600;
 }
 
 .stat-label {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: var(--muted);
+  margin-top: 2px;
 }
 
 .severity-bars {
@@ -209,11 +215,19 @@ body {
   background: var(--critical);
 }
 
+.sev-count {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
 .sev-pill {
   padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 0.72rem;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
   text-transform: uppercase;
+  letter-spacing: 0.04em;
   border: 1px solid currentColor;
 }
 
@@ -229,10 +243,15 @@ body {
 .field input {
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 8px;
+  border-radius: var(--radius-sm);
+  padding: 9px 10px;
   color: var(--text);
+  font-family: var(--font-body);
   font-size: 0.9rem;
+}
+
+.field input:focus-visible {
+  border-color: var(--accent-2);
 }
 
 .mode-toggle {
@@ -248,13 +267,22 @@ body {
 }
 
 button {
+  font-family: var(--font-mono);
   background: var(--accent);
-  color: #06121f;
+  color: var(--accent-ink);
   border: none;
-  border-radius: 6px;
-  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  padding: 9px 16px;
+  font-size: 0.82rem;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+button:not(:disabled):hover {
+  filter: brightness(1.08);
 }
 
 button.secondary {
@@ -291,31 +319,20 @@ table {
 th,
 td {
   text-align: left;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border);
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border-soft);
   white-space: nowrap;
 }
 
 th {
   color: var(--muted);
+  font-family: var(--font-mono);
   font-weight: 500;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
-.mono {
-  font-family: ui-monospace, Consolas, monospace;
-}
-
-.row-live {
-  animation: flash 1.2s ease-out;
-}
-
-@keyframes flash {
-  from {
-    background: rgba(77, 163, 255, 0.25);
-  }
-  to {
-    background: transparent;
-  }
+td.mono {
+  color: var(--text-dim);
 }

@@ -94,6 +94,39 @@ standing up the full stack:
   `oxlint`) — previously it swept up whatever was sitting in `dist*/`
   too, including minified build output.
 
+## Landing → Login → Dashboard flow (demo mode only)
+
+Reworked the demo build into a real three-screen product flow instead of
+dropping a visitor straight on the alerts table, with its own visual
+identity (deliberately not reusing the portfolio site's dark+green
+network-graph look — an instrument-panel read instead: deep indigo,
+antique brass as the primary signal color, a cool teal counter-signal,
+Fraunces/Work Sans/IBM Plex Mono):
+
+- `pages/Landing.tsx`: hero with an animated canvas "signal monitor"
+  (`components/SignalScope.tsx` — a self-contained oscilloscope/radar
+  generative graphic, standing in for stock/AI imagery there's no tool
+  here to generate), a real 4-step detection pipeline, a 3-card feature
+  grid, and a footer link back to the portfolio's `/work/nids` case
+  study — the actual "connect this to my portfolio" link.
+- `pages/Login.tsx`: a decorative access gate (`demoAuth.ts`) — there is
+  still no real backend behind demo mode, so it's honest about that in
+  its own copy, but it looks and behaves like a real login (a fake
+  verify delay, a session-scoped gate on `/dashboard`, a "skip" escape
+  hatch).
+- `pages/Dashboard.tsx`: the former `App.tsx` content, restyled to the
+  same tokens, with Framer Motion added throughout (panel stagger-in,
+  count-up stat numbers, animated severity bars, live alert rows
+  animating in via `AnimatePresence`).
+- Installed `framer-motion` and `react-router-dom` (`HashRouter`, so the
+  static demo bundle needs no server-side rewrite rule to serve
+  `/login` / `/dashboard` on a direct load).
+- Outside demo mode this routing is skipped entirely — `App.tsx` renders
+  `Dashboard` directly, so a real `docker compose up` deployment is
+  unaffected and still opens straight on the live alerts view.
+- Verified: `tsc -b`, `oxlint src`, and both `npm run build` and
+  `npm run build:demo` are clean.
+
 ## Still open
 
 - **Never trained on real CICIDS2017 data** — loader is test-verified

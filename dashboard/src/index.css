@@ -1,11 +1,166 @@
+/*
+ * Design tokens for the whole app (Landing / Login / Dashboard alike).
+ *
+ * Direction: an instrument-panel read on network security — closer to a
+ * sonar operator's console than the black-and-neon "hacker terminal"
+ * cliché. Deep indigo ground, antique brass as the primary signal color,
+ * a cool teal as its counter-signal (live/ok state), serif display type
+ * for authority, mono for anything that's actually data.
+ */
+
 :root {
+  color-scheme: dark;
+
+  --bg: #0a0f1c;
+  --bg-soft: #0d1426;
+  --panel: #121a30;
+  --panel-raised: #17203c;
+  --border: #262f4d;
+  --border-soft: #1c2440;
+  --text: #eef1fb;
+  --text-dim: #b7bfd9;
+  --muted: #838ea9;
+
+  /* Primary signal: antique brass — a warm, considered accent, not the
+     acid-green/vermilion-on-black default. */
+  --accent: #d3a03c;
+  --accent-strong: #e8b657;
+  --accent-ink: #221703;
+
+  /* Counter-signal: a cool teal, used for "live" / connected / info —
+     never doubles as an alert severity. */
+  --accent-2: #49c9c2;
+  --accent-2-ink: #04211f;
+
+  --low: #6b7280;
+  --medium: #d9a441;
+  --high: #e0703f;
+  --critical: #ef4a68;
+
+  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
+  --font-body:
+    "Work Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --shadow-panel: 0 20px 60px -30px rgba(0, 0, 0, 0.6);
+
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
 }
 
 html,
 body,
 #root {
   height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent-2);
+  outline-offset: 2px;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--accent);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Shared button primitives — Landing/Login/Dashboard all draw from these. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: var(--radius-sm);
+  padding: 12px 22px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+  transition:
+    transform 0.15s ease,
+    filter 0.15s ease,
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.btn-primary:not(:disabled):hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.btn-ghost:not(:disabled):hover {
+  border-color: var(--accent-2);
+  color: var(--accent-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
