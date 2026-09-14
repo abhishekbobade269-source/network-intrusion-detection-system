@@ -16,6 +16,7 @@ htmlcov/
 .env
 .env.*
 !.env.example
+!dashboard/.env.demo
 
 # Data & models (large / generated — see data/README.md and models/README.md)
 data/raw/
@@ -34,6 +35,7 @@ models/*.metrics.json
 # Dashboard
 dashboard/node_modules/
 dashboard/dist/
+dashboard/dist-demo/
 
 # Editors / OS / local tooling state
 .vscode/

@@ -70,6 +70,30 @@ Full writeup of all eleven is in `docs/architecture.md`'s "Bugs this
 project's own tests caught" section. Every one of 7–11 has a regression
 test, not just a manual fix.
 
+## Dashboard demo mode (recruiter-facing, no backend required)
+
+Added a `VITE_DEMO_MODE` build mode so the dashboard can run standalone —
+no FastAPI, no Postgres, no websocket — for sharing the UI without
+standing up the full stack:
+
+- `dashboard/src/demoStore.ts` / `demoFixtures.ts`: an in-memory fake
+  backend seeded with alert shapes the real detectors actually produce
+  (port scan, ICMP flood, SYN flood, exfiltration, C2 beaconing, ML
+  anomaly), plus a simulated live feed ticking every 4s so the "live"
+  view isn't static.
+- `api.ts`, `CaptureControl.tsx`, `useAlertsFeed.ts` branch on
+  `DEMO_MODE` to read/write that store instead of hitting the network;
+  the rest of the app (AlertsTable, StatsPanel, the connection badge)
+  is unmodified and can't tell the difference.
+- A visible "DEMO" banner links back to the real repo so it's never
+  mistaken for a live feed.
+- `npm run build:demo` (uses `.env.demo`) builds it to `dashboard/dist-demo/`,
+  gitignored like the regular `dist/` — it's a build artifact, rebuilt
+  on demand, not committed.
+- Also fixed `npm run lint` scope (`oxlint src` instead of bare
+  `oxlint`) — previously it swept up whatever was sitting in `dist*/`
+  too, including minified build output.
+
 ## Still open
 
 - **Never trained on real CICIDS2017 data** — loader is test-verified

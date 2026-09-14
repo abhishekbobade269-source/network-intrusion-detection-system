@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ApiError, getStoredApiKey, setStoredApiKey, startCapture, stopCapture } from "../api";
+import { DEMO_MODE } from "../demoStore";
 import type { Capabilities, EngineStats } from "../types";
 
 interface Props {
@@ -8,7 +9,43 @@ interface Props {
   onChanged: () => void;
 }
 
-export function CaptureControl({ capabilities, engineStats, onChanged }: Props) {
+function DemoCaptureControl({ engineStats, onChanged }: Props) {
+  const isCapturing = engineStats?.is_capturing ?? false;
+  const [busy, setBusy] = useState(false);
+
+  const toggle = async () => {
+    setBusy(true);
+    try {
+      await (isCapturing ? stopCapture("") : startCapture({ mode: "pcap" }, ""));
+      onChanged();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <section className="panel">
+      <h2>Capture control</h2>
+      <p className="empty">
+        This demo replays a recorded detection session — there's no real network capture
+        behind it. The real thing (live NIC capture, pcap replay, PostgreSQL-backed alerts)
+        lives in the repo.
+      </p>
+      <div className="actions">
+        <button onClick={toggle} disabled={busy}>
+          {isCapturing ? "Pause simulated feed" : "Resume simulated feed"}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+export function CaptureControl(props: Props) {
+  if (DEMO_MODE) return <DemoCaptureControl {...props} />;
+  return <RealCaptureControl {...props} />;
+}
+
+function RealCaptureControl({ capabilities, engineStats, onChanged }: Props) {
   const [mode, setMode] = useState<"live" | "pcap">("pcap");
   const [iface, setIface] = useState("");
   const [pcapPath, setPcapPath] = useState("");

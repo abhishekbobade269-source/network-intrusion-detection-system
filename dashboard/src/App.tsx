@@ -5,6 +5,7 @@ import { AlertsTable } from "./components/AlertsTable";
 import { CaptureControl } from "./components/CaptureControl";
 import { ConnectionBadge } from "./components/ConnectionBadge";
 import { StatsPanel } from "./components/StatsPanel";
+import { DEMO_MODE } from "./demoStore";
 import { useAlertsFeed } from "./hooks/useAlertsFeed";
 import type { Alert, AlertStats, Capabilities, EngineStats } from "./types";
 
@@ -38,6 +39,16 @@ function App() {
 
   return (
     <div className="app">
+      {DEMO_MODE && (
+        <div className="demo-banner">
+          <span className="demo-badge">DEMO</span>
+          Synthetic, replayed traffic — not a live network feed.{" "}
+          <a href="https://github.com/abhishekbobade269-source/network-intrusion-detection-system">
+            Real detection engine + source on GitHub ↗
+          </a>
+        </div>
+      )}
+
       <header className="app-header">
         <h1>NIDS — live alerts</h1>
         <ConnectionBadge connected={connected} />

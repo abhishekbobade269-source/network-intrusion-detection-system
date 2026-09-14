@@ -1,3 +1,5 @@
+import { buildEngineStats, computeStats, DEMO_CAPABILITIES } from "./demoFixtures";
+import { DEMO_MODE, getAlerts, isCapturing, setCapturing } from "./demoStore";
 import type { Alert, AlertStats, Capabilities, EngineStats } from "./types";
 
 export const API_BASE_URL: string =
@@ -46,6 +48,12 @@ export function fetchAlerts(params: {
   severity?: string;
   srcIp?: string;
 }): Promise<Alert[]> {
+  if (DEMO_MODE) {
+    let rows = getAlerts();
+    if (params.severity) rows = rows.filter((a) => a.severity === params.severity);
+    if (params.srcIp) rows = rows.filter((a) => a.src_ip === params.srcIp);
+    return Promise.resolve(rows.slice(0, params.limit ?? 100));
+  }
   const query = new URLSearchParams();
   if (params.limit) query.set("limit", String(params.limit));
   if (params.severity) query.set("severity", params.severity);
@@ -54,14 +62,17 @@ export function fetchAlerts(params: {
 }
 
 export function fetchAlertStats(): Promise<AlertStats> {
+  if (DEMO_MODE) return Promise.resolve(computeStats(getAlerts()));
   return request<AlertStats>("/stats");
 }
 
 export function fetchEngineStats(): Promise<EngineStats> {
+  if (DEMO_MODE) return Promise.resolve(buildEngineStats(getAlerts(), isCapturing()));
   return request<EngineStats>("/stats/engine");
 }
 
 export function fetchCapabilities(): Promise<Capabilities> {
+  if (DEMO_MODE) return Promise.resolve(DEMO_CAPABILITIES);
   return request<Capabilities>("/system/capabilities");
 }
 
@@ -73,6 +84,10 @@ export interface StartCaptureBody {
 }
 
 export function startCapture(body: StartCaptureBody, apiKey: string): Promise<unknown> {
+  if (DEMO_MODE) {
+    setCapturing(true);
+    return Promise.resolve({ status: "started" });
+  }
   return request("/system/capture/start", {
     method: "POST",
     headers: { "Content-Type": "application/json", "X-API-Key": apiKey },
@@ -81,6 +96,10 @@ export function startCapture(body: StartCaptureBody, apiKey: string): Promise<un
 }
 
 export function stopCapture(apiKey: string): Promise<unknown> {
+  if (DEMO_MODE) {
+    setCapturing(false);
+    return Promise.resolve({ status: "stopped" });
+  }
   return request("/system/capture/stop", {
     method: "POST",
     headers: { "X-API-Key": apiKey },

@@ -11,6 +11,11 @@
   --medium: #d9a441;
   --high: #e0703f;
   --critical: #e0475e;
+
+  /* Distinct from the severity ramp on purpose — a cool violet reads as
+     "informational / synthetic," never mistakable for a real alert state. */
+  --demo: #9b8cf2;
+  --demo-bg: #1a1530;
 }
 
 * {
@@ -44,8 +49,42 @@ body {
 }
 
 .app-header h1 {
+  font-family: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  font-weight: 700;
   font-size: 1.4rem;
+  letter-spacing: -0.01em;
   margin: 0;
+}
+
+.demo-banner {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  background: var(--demo-bg);
+  border: 1px solid var(--demo);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.demo-banner a {
+  color: var(--demo);
+  font-weight: 600;
+}
+
+.demo-badge {
+  font-family: "JetBrains Mono", ui-monospace, Consolas, monospace;
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  color: var(--demo-bg);
+  background: var(--demo);
+  border-radius: 4px;
+  padding: 3px 7px;
+  flex-shrink: 0;
 }
 
 .badge {
