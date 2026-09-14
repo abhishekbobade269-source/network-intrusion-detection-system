@@ -165,6 +165,23 @@ since "console looks good" but Landing needed to earn that:
   `index.css`) and a separate `.bar-fill.sev-*` background-only class.
 - Verified again: `tsc -b`, `oxlint src`, both builds clean.
 
+## Dashboard demo is live on Vercel
+
+- **Live at:** https://nids-console.vercel.app
+- Vercel project `nids-console` under `abhishekbobade269-2821s-projects`
+  (the same account as the portfolio site), GitHub repo connected for
+  future git-triggered deploys.
+- `dashboard/vercel.json` overrides the default Vite detection so
+  Vercel actually runs `npm run build:demo` → `dist-demo` (the demo
+  build, `VITE_DEMO_MODE=true`) instead of the plain production build
+  meant for the Docker/real-backend deployment.
+- Deployed directly via `vercel --prod` from this session, not through
+  a git push — the local repo is currently ahead of `origin/master` and
+  hasn't been pushed (do that separately if/when future changes should
+  also flow through the now-connected GitHub → Vercel auto-deploy).
+- Verified publicly reachable (`200`, no Vercel SSO/Deployment
+  Protection wall) immediately after deploy.
+
 ## Still open
 
 - **Never trained on real CICIDS2017 data** — loader is test-verified
